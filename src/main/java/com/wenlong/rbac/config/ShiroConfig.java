@@ -1,17 +1,14 @@
 package com.wenlong.rbac.config;
 
 import com.wenlong.rbac.shiro.RbacRealm;
-import com.wenlong.rbac.shiro.RbacSessionManager;
 import org.apache.shiro.authc.credential.HashedCredentialsMatcher;
-import org.apache.shiro.mgt.SessionsSecurityManager;
-import org.apache.shiro.session.mgt.SessionManager;
-import org.apache.shiro.session.mgt.eis.EnterpriseCacheSessionDAO;
-import org.apache.shiro.session.mgt.eis.SessionDAO;
+import org.apache.shiro.spring.LifecycleBeanPostProcessor;
 import org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor;
 import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
 import org.apache.shiro.web.mgt.DefaultWebSecurityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
@@ -28,9 +25,12 @@ import java.util.Map;
 public class ShiroConfig {
     private final Logger logger = LoggerFactory.getLogger(ShiroConfig.class);
 
+
+
+
     /**
      * 自定义Realm 实现登陆认证和授权
-     * @return
+     * @return RbacRealm
      */
     @Bean
     public RbacRealm rbacRealm(){
@@ -41,10 +41,10 @@ public class ShiroConfig {
     }
 
     @Bean
-    public SessionsSecurityManager securityManager(){
+    public DefaultWebSecurityManager securityManager(){
         DefaultWebSecurityManager securityManager =  new DefaultWebSecurityManager();
         //自定义session管理,可以不设置，采用默认的SessionManager
-        securityManager.setSessionManager(sessionManager());
+        //securityManager.setSessionManager(sessionManager());
         //自定义缓存实现
         //securityManager.setCacheManager(ehCacheManager());
         securityManager.setRealm(rbacRealm());
@@ -55,9 +55,9 @@ public class ShiroConfig {
      * 凭证匹配器
      * （由于我们的密码校验交给Shiro的SimpleAuthenticationInfo进行处理了
      * ）
-     * @return
+     * @return HashedCredentialsMatcher
      */
-    @Bean
+    @Bean()
     public HashedCredentialsMatcher hashedCredentialsMatcher(){
         HashedCredentialsMatcher hashedCredentialsMatcher = new HashedCredentialsMatcher();
         hashedCredentialsMatcher.setHashAlgorithmName("MD5");//散列算法:这里使用MD5算法;
@@ -68,7 +68,7 @@ public class ShiroConfig {
     /**
      *  开启shiro aop注解支持.
      *  使用代理方式;所以需要开启代码支持;
-     * @return
+     * @return AuthorizationAttributeSourceAdvisor
      */
     @Bean
     public AuthorizationAttributeSourceAdvisor authorizationAttributeSourceAdvisor(){
@@ -78,7 +78,7 @@ public class ShiroConfig {
     }
 
     @Bean
-    public ShiroFilterFactoryBean shiroFilter(){
+    public ShiroFilterFactoryBean shiroFilterFactoryBean(){
         logger.info("ShiroConfig.shiroFilter()");
 
         ShiroFilterFactoryBean filterFactoryBean = new ShiroFilterFactoryBean();
@@ -104,6 +104,19 @@ public class ShiroConfig {
         return filterFactoryBean;
     }
 
+    // 如果使用shiro-spring-boot-web-starter 进行整合时，则还需要加下面两个Bean代码，否则使用权限注解时会报错
+    // 下面两个方法对 注解权限起作用有很大的关系，请把这两个方法，放在配置的最上面
+    @Bean(name = "lifecycleBeanPostProcessor")
+    public LifecycleBeanPostProcessor lifecycleBeanPostProcessor() {
+        return new LifecycleBeanPostProcessor();
+    }
+    @Bean
+    public DefaultAdvisorAutoProxyCreator defaultAdvisorAutoProxyCreator() {
+        DefaultAdvisorAutoProxyCreator autoProxyCreator = new DefaultAdvisorAutoProxyCreator();
+        autoProxyCreator.setProxyTargetClass(true);
+        return autoProxyCreator;
+    }
+
     //下面的代码可以不要
 
 //    @Bean
@@ -115,26 +128,26 @@ public class ShiroConfig {
      * //这里可以不设置。Shiro有默认的session管理。如果缓存为Redis则需改用Redis的管理
      * @return
      */
-    @Bean
-    public SessionDAO sessionDAO(){
-        return new EnterpriseCacheSessionDAO();
-    }
+//    @Bean
+//    public SessionDAO sessionDAO(){
+//        return new EnterpriseCacheSessionDAO();
+//    }
 
     /**
      * 传统结构项目中，shiro从cookie中读取sessionId以此来维持会话，在前后端分离的项目中（也可在移动APP项目使用），
      * 我们选择在ajax的请求头中传递sessionId，因此需要重写shiro获取sessionId的方式。
      * 自定义ShiroSessionManager类继承DefaultWebSessionManager类，重写getSessionId方法
-     * @return
+     * @return SessionManager
      */
-    @Bean
-    public SessionManager sessionManager(){
-        RbacSessionManager manager = new RbacSessionManager();
-        //这里可以不设置。Shiro有默认的session管理。如果缓存为Redis则需改用Redis的管理
-        manager.setSessionDAO(sessionDAO());
-        manager.setGlobalSessionTimeout(3600000);
-        manager.setSessionValidationInterval(3600000);
-        return manager;
-    }
+//    @Bean
+//    public SessionManager sessionManager(){
+//        RbacSessionManager manager = new RbacSessionManager();
+//        //这里可以不设置。Shiro有默认的session管理。如果缓存为Redis则需改用Redis的管理
+//        manager.setSessionDAO(sessionDAO());
+//        manager.setGlobalSessionTimeout(3600000);
+//        manager.setSessionValidationInterval(3600000);
+//        return manager;
+//    }
 
 
 }

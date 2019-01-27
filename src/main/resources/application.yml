@@ -28,3 +28,9 @@ spring:
   thymeleaf:
     cache: false
     mode: LEGACYHTML5
+
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    password:
+    timeout: 1000ms
